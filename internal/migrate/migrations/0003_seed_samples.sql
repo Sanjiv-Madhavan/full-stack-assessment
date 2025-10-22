@@ -1,25 +1,53 @@
 -- +goose Up
-INSERT INTO
-    todos (id, title, completed, created_at)
+INSERT INTO projects (id, name, created_at, updated_at)
 VALUES
     (
-        '11111111-1111-1111-1111-111111111111',
-        'Read the spec',
-        0,
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        'Demo Project',
+        '2025-01-01T00:00:00Z',
         '2025-01-01T00:00:00Z'
+    );
+
+INSERT INTO
+    tasks (
+        id,
+        project_id,
+        title,
+        description,
+        status,
+        created_at,
+        updated_at
+    )
+VALUES
+    (
+        'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        'Morning routine',
+        'A basic overview',
+        'IN_PROGRESS',
+        '2025-01-01T01:00:00Z',
+        '2025-01-01T02:00:00Z'
     ),
     (
-        '22222222-2222-2222-2222-222222222222',
-        'Implement handlers',
-        1,
-        '2025-01-02T00:00:00Z'
+        'cccccccc-cccc-cccc-cccc-cccccccccccc',
+        'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        'Eat food',
+        'descriptions of eating',
+        'TODO',
+        '2025-01-01T01:30:00Z',
+        '2025-01-01T01:30:00Z'
     );
 
 -- +goose Down
 DELETE FROM
-    todos
+    tasks
 WHERE
     id IN (
-        '11111111-1111-1111-1111-111111111111',
-        '22222222-2222-2222-2222-222222222222'
+        'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        'cccccccc-cccc-cccc-cccc-cccccccccccc'
     );
+
+DELETE FROM
+    projects
+WHERE
+    id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';

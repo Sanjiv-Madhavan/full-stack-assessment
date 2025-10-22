@@ -15,6 +15,22 @@ const (
 	Unhealthy Status = "unhealthy"
 )
 
+// Defines values for TaskStatus.
+const (
+	DONE       TaskStatus = "DONE"
+	INPROGRESS TaskStatus = "IN_PROGRESS"
+	TODO       TaskStatus = "TODO"
+)
+
+// BadRequest Bad Request (malformed JSON or type mismatch)
+type BadRequest = interface{}
+
+// Conflict Conflict (e.g., unique constraint)
+type Conflict = interface{}
+
+// DefaultError Unexpected error
+type DefaultError = interface{}
+
 // Error defines model for Error.
 type Error struct {
 	Code    int    `json:"code"`
@@ -26,30 +42,35 @@ type Health struct {
 	Status Status `json:"status"`
 }
 
-// NewTodo defines model for NewTodo.
-type NewTodo struct {
-	Title string `json:"title"`
+// NewProject defines model for NewProject.
+type NewProject struct {
+	Name string `json:"name"`
+}
+
+// NotFound Resource not found
+type NotFound = interface{}
+
+// Project defines model for Project.
+type Project struct {
+	CreatedAt time.Time          `json:"createdAt"`
+	Id        openapi_types.UUID `json:"id"`
+	Name      string             `json:"name"`
+	UpdatedAt time.Time          `json:"updatedAt"`
 }
 
 // Status defines model for Status.
 type Status string
 
-// Todo defines model for Todo.
-type Todo struct {
-	Completed bool               `json:"completed"`
-	CreatedAt time.Time          `json:"createdAt"`
-	Id        openapi_types.UUID `json:"id"`
-	Title     string             `json:"title"`
+// TaskStatus defines model for TaskStatus.
+type TaskStatus string
+
+// Unprocessable Validation failed (well-formed request, semantic rules fail)
+type Unprocessable = interface{}
+
+// UpdateProject defines model for UpdateProject.
+type UpdateProject struct {
+	Name *string `json:"name,omitempty"`
 }
 
-// UpdateTodo defines model for UpdateTodo.
-type UpdateTodo struct {
-	Completed *bool   `json:"completed,omitempty"`
-	Title     *string `json:"title,omitempty"`
-}
-
-// PostTodosJSONRequestBody defines body for PostTodos for application/json ContentType.
-type PostTodosJSONRequestBody = NewTodo
-
-// PutTodosIdJSONRequestBody defines body for PutTodosId for application/json ContentType.
-type PutTodosIdJSONRequestBody = UpdateTodo
+// CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
+type CreateProjectJSONRequestBody = NewProject

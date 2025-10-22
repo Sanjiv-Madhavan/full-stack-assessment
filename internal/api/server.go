@@ -1,105 +1,21 @@
-// package api
-
-// import (
-// 	"context"
-// 	"sync"
-// 	"time"
-
-// 	"full-stack-assesment/internal/scheme"
-
-// 	"github.com/google/uuid"
-// 	"github.com/oapi-codegen/runtime/types"
-// )
-
-// var _ StrictServerInterface = (*Server)(nil)
-
-// type Server struct {
-// 	mu    sync.RWMutex
-// 	todos map[string]scheme.Todo
-// }
-
-// func NewServer() *Server {
-// 	return &Server{
-// 		todos: make(map[string]scheme.Todo),
-// 	}
-// }
-
-// func (s *Server) GetHealth(ctx context.Context, _ GetHealthRequestObject) (GetHealthResponseObject, error) {
-// 	return GetHealth200JSONResponse{Status: scheme.Ok}, nil
-// }
-
-// func (s *Server) GetTodos(ctx context.Context, _ GetTodosRequestObject) (GetTodosResponseObject, error) {
-// 	s.mu.RLock()
-// 	defer s.mu.RUnlock()
-// 	out := make([]scheme.Todo, 0, len(s.todos))
-// 	for _, t := range s.todos {
-// 		out = append(out, t)
-// 	}
-// 	return GetTodos200JSONResponse(out), nil
-// }
-
-// func (s *Server) PostTodos(ctx context.Context, req PostTodosRequestObject) (PostTodosResponseObject, error) {
-// 	if req.Body == nil || req.Body.Title == "" {
-// 		return PostTodos400JSONResponse(scheme.Error{Code: 400, Message: "title is required"}), nil
-// 	}
-// 	u := uuid.New() // uuid.UUID (not string)
-// 	todo := scheme.Todo{
-// 		Id:        types.UUID(u), // 👈 match the generated field type
-// 		Title:     req.Body.Title,
-// 		Completed: false,
-// 		CreatedAt: time.Now().UTC(),
-// 	}
-// 	s.mu.Lock()
-// 	s.todos[u.String()] = todo
-// 	s.mu.Unlock()
-// 	return PostTodos201JSONResponse(todo), nil
-// }
-
-// func (s *Server) PutTodosId(ctx context.Context, req PutTodosIdRequestObject) (PutTodosIdResponseObject, error) {
-// 	id := req.Id
-// 	s.mu.Lock()
-// 	defer s.mu.Unlock()
-// 	cur, ok := s.todos[id.String()]
-// 	if !ok {
-// 		return PutTodosId404JSONResponse(scheme.Error{Code: 404, Message: "todo not found"}), nil
-// 	}
-// 	if req.Body != nil {
-// 		if req.Body.Title != nil {
-// 			cur.Title = *req.Body.Title
-// 		}
-// 		if req.Body.Completed != nil {
-// 			cur.Completed = *req.Body.Completed
-// 		}
-// 	}
-// 	s.todos[id.String()] = cur
-// 	return PutTodosId200JSONResponse(cur), nil
-// }
-
-// func (s *Server) DeleteTodosId(ctx context.Context, req DeleteTodosIdRequestObject) (DeleteTodosIdResponseObject, error) {
-// 	id := req.Id
-// 	s.mu.Lock()
-// 	defer s.mu.Unlock()
-// 	if _, ok := s.todos[id.String()]; !ok {
-// 		return DeleteTodosId404JSONResponse(scheme.Error{Code: 404, Message: "todo not found"}), nil
-// 	}
-// 	delete(s.todos, id.String())
-// 	return DeleteTodosId204Response{}, nil
-// }
-
 package api
 
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/oapi-codegen/runtime/types"
 
+	"full-stack-assesment/internal/helpers"
 	"full-stack-assesment/internal/scheme"
 )
 
-var _ StrictServerInterface = (*Server)(nil)
+var _ ServerInterface = (*Server)(nil)
 
 type Server struct {
 	db *sql.DB
@@ -109,128 +25,112 @@ func NewServer(db *sql.DB) *Server {
 	return &Server{db: db}
 }
 
-func (s *Server) GetHealth(ctx context.Context, _ GetHealthRequestObject) (GetHealthResponseObject, error) {
-	return GetHealth200JSONResponse{Status: scheme.Ok}, nil
+func (s *Server) GetHealth(w http.ResponseWriter, r *http.Request) {
+	helpers.WriteJSON(w, http.StatusOK, "OK")
 }
 
-func (s *Server) GetTodos(ctx context.Context, _ GetTodosRequestObject) (GetTodosResponseObject, error) {
-	const q = `SELECT id, title, completed, created_at FROM todos ORDER BY created_at DESC`
+func (s *Server) CreateProject(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var body scheme.NewProject
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		helpers.WriteError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	name := strings.TrimSpace(body.Name)
+	if name == "" {
+		helpers.WriteError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	if l := len(name); l > 128 {
+		helpers.WriteError(w, http.StatusBadRequest, "name too long (max 128)")
+		return
+	}
+
+	id := uuid.New()
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+
+	const q = `
+		INSERT INTO projects (id, name, created_at, updated_at)
+		VALUES (?, ?, ?, ?)
+	`
+	if _, err := s.db.ExecContext(ctx, q, id.String(), name, now, now); err != nil {
+		if errStr := strings.ToLower(err.Error()); strings.Contains(errStr, "unique") && strings.Contains(errStr, "projects.name") {
+			helpers.WriteError(w, http.StatusConflict, "project name already exists")
+			return
+		}
+		helpers.WriteError(w, http.StatusInternalServerError, "failed to create project")
+		return
+	}
+
+	created := scheme.Project{
+		Id:        types.UUID(id),
+		Name:      name,
+		CreatedAt: parseTimeOrNow(now),
+		UpdatedAt: parseTimeOrNow(now),
+	}
+	helpers.WriteJSON(w, http.StatusCreated, created)
+}
+
+func (s *Server) ListProjects(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	const q = `
+		SELECT id, name, created_at, updated_at
+		FROM projects
+		ORDER BY updated_at DESC, name ASC
+	`
 	rows, err := s.db.QueryContext(ctx, q)
 	if err != nil {
-		return nil, err
+		helpers.WriteError(w, http.StatusInternalServerError, "failed to query projects")
+		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
-	out := make([]scheme.Todo, 0, 16)
+	projects := make([]scheme.Project, 0, 16)
 	for rows.Next() {
-		var id, title string
-		var completedInt int
-		var createdAt string
-		if err := rows.Scan(&id, &title, &completedInt, &createdAt); err != nil {
-			return nil, err
+		var idStr, name, created, updated string
+		if err := rows.Scan(&idStr, &name, &created, &updated); err != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to read project row")
+			return
 		}
-		out = append(out, scheme.Todo{
-			Id:        parseUUIDOrZero(id),
-			Title:     title,
-			Completed: completedInt == 1,
-			CreatedAt: mustParseTime(createdAt),
+		u, parseErr := uuid.Parse(idStr)
+		if parseErr != nil {
+			helpers.WriteError(w, http.StatusInternalServerError, "invalid project id in database")
+			return
+		}
+		projects = append(projects, scheme.Project{
+			Id:        types.UUID(u),
+			Name:      name,
+			CreatedAt: parseTimeOrNow(created),
+			UpdatedAt: parseTimeOrNow(updated),
 		})
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		helpers.WriteError(w, http.StatusInternalServerError, "rows error")
+		return
 	}
-	return GetTodos200JSONResponse(out), nil
+
+	helpers.WriteJSON(w, http.StatusOK, projects)
 }
 
-func (s *Server) PostTodos(ctx context.Context, req PostTodosRequestObject) (PostTodosResponseObject, error) {
-	if req.Body == nil || req.Body.Title == "" {
-		return PostTodos400JSONResponse(scheme.Error{Code: 400, Message: "title is required"}), nil
+func parseTimeOrNow(s string) time.Time {
+	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		return t
 	}
-	id := uuid.New()
-	now := time.Now().UTC()
-
-	const q = `INSERT INTO todos(id, title, completed, created_at) VALUES(?, ?, 0, ?)`
-	if _, err := s.db.ExecContext(ctx, q, id, req.Body.Title, now.Format(time.RFC3339Nano)); err != nil {
-		return nil, err
-	}
-
-	return PostTodos201JSONResponse(scheme.Todo{
-		Id:        id,
-		Title:     req.Body.Title,
-		Completed: false,
-		CreatedAt: now,
-	}), nil
+	return time.Now().UTC()
 }
 
-func (s *Server) PutTodosId(ctx context.Context, req PutTodosIdRequestObject) (PutTodosIdResponseObject, error) {
-	// fetch current
-	const sel = `SELECT id, title, completed, created_at FROM todos WHERE id = ?`
-	var id, title string
-	var completedInt int
-	var createdAt string
-	err := s.db.QueryRowContext(ctx, sel, req.Id).Scan(&id, &title, &completedInt, &createdAt)
-	if err == sql.ErrNoRows {
-		return PutTodosId404JSONResponse(scheme.Error{Code: 404, Message: "todo not found"}), nil
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	// apply patch
-	if req.Body != nil {
-		if req.Body.Title != nil {
-			title = *req.Body.Title
+// ensureProjectExists returns 404 if project is missing.
+func (s *Server) ensureProjectExists(ctx context.Context, projectID string) error {
+	const q = `SELECT 1 FROM projects WHERE id = ?`
+	var one int
+	if err := s.db.QueryRowContext(ctx, q, projectID).Scan(&one); err != nil {
+		if err == sql.ErrNoRows {
+			return &helpers.NotFoundErr{}
 		}
-		if req.Body.Completed != nil {
-			if *req.Body.Completed {
-				completedInt = 1
-			} else {
-				completedInt = 0
-			}
-		}
+		return err
 	}
-
-	const upd = `UPDATE todos SET title = ?, completed = ? WHERE id = ?`
-	if _, err := s.db.ExecContext(ctx, upd, title, completedInt, id); err != nil {
-		return nil, err
-	}
-
-	return PutTodosId200JSONResponse(scheme.Todo{
-		Id:        parseUUIDOrZero(id),
-		Title:     title,
-		Completed: completedInt == 1,
-		CreatedAt: mustParseTime(createdAt),
-	}), nil
-}
-
-func (s *Server) DeleteTodosId(ctx context.Context, req DeleteTodosIdRequestObject) (DeleteTodosIdResponseObject, error) {
-	const del = `DELETE FROM todos WHERE id = ?`
-	res, err := s.db.ExecContext(ctx, del, req.Id)
-	if err != nil {
-		return nil, err
-	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		return DeleteTodosId404JSONResponse(scheme.Error{Code: 404, Message: "todo not found"}), nil
-	}
-	return DeleteTodosId204Response{}, nil
-}
-
-// helpers
-
-func mustParseTime(s string) time.Time {
-	t, err := time.Parse(time.RFC3339Nano, s)
-	if err != nil {
-		// if someone later inserts not-ISO timestamps, fall back to now
-		return time.Now().UTC()
-	}
-	return t
-}
-
-func parseUUIDOrZero(s string) types.UUID {
-	u, err := uuid.Parse(s)
-	if err != nil {
-		return uuid.Nil // still a valid UUID value; decide if you want to 500 instead
-	}
-	return u
+	return nil
 }

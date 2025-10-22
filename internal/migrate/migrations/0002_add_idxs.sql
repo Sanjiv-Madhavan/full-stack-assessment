@@ -1,5 +1,9 @@
 -- +goose Up
-CREATE INDEX IF NOT EXISTS idx_todos_completed_created ON todos (completed, created_at);
+CREATE INDEX IF NOT EXISTS idx_tasks_project_status ON tasks (project_id, status, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_title_like ON tasks (title);
 
 -- +goose Down
-DROP INDEX IF EXISTS idx_todos_completed_created;
+DROP INDEX IF EXISTS idx_tasks_project_status;
+
+DROP INDEX IF EXISTS idx_tasks_title_like;

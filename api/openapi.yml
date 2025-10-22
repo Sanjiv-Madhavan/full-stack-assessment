@@ -16,80 +16,65 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Health'
-  /todos:
+                $ref: "#/components/schemas/Health"
+
+  /projects:
     get:
-      summary: List todos
-      operationId: getTodos
-      tags: [Todos]
+      tags: [projects]
+      summary: List projects.
+      description: Returns all projects.
+      operationId: listProjects
       responses:
-        200:
-          description: OK
+        '200':
+          description: Successful operation
           content:
             application/json:
               schema:
                 type: array
-                items: { $ref: '#/components/schemas/Todo' }
+                items: { $ref: '#/components/schemas/Project' }
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
     post:
-      summary: Create a todo
-      operationId: postTodos
-      tags: [Todos]
+      tags: [projects]
+      summary: Create a new project.
+      description: Create a new project with a unique name.
+      operationId: createProject
       requestBody:
+        description: New project payload
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/NewTodo' }
+            schema: { $ref: '#/components/schemas/NewProject' }
       responses:
-        201:
-          description: Created
+        '201':
+          description: Project created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Todo' }
-        400:
-          description: Bad Request
+              schema: { $ref: '#/components/schemas/Project' }
+        '400':
+          description: Bad request (malformed JSON or type mismatch)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
-
-  /todos/{id}:
-    parameters:
-      - in: path
-        name: id
-        required: true
-        schema: { type: string, format: uuid }
-    put:
-      summary: Update a todo
-      operationId: putTodosId
-      tags: [Todos]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/UpdateTodo' }
-      responses:
-        200:
-          description: Updated
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Todo' }
-        404:
-          description: Not Found
+        '409':
+          description: Project name already exists
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
-    delete:
-      summary: Delete a todo
-      operationId: deleteTodosId
-      tags: [Todos]
-      responses:
-        204:
-          description: No Content
-        404:
-          description: Not Found
+        '422':
+          description: Validation failed (e.g., name too short/long)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
-
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  
 components:
   schemas:
     Health:
@@ -97,7 +82,7 @@ components:
       required: [status]
       properties:
         status:
-          $ref: '#/components/schemas/Status'
+          $ref: "#/components/schemas/Status"
 
     Status:
       type: string
@@ -107,26 +92,55 @@ components:
       type: object
       required: [code, message]
       properties:
-        code:    { type: integer, example: 404 }
+        code: { type: integer, example: 404 }
         message: { type: string, example: "todo not found" }
 
-    Todo:
+    Project:
       type: object
-      required: [id, title, completed, createdAt]
+      required: [id, name, createdAt, updatedAt]
       properties:
-        id:        { type: string, format: uuid }
-        title:     { type: string, minLength: 1 }
-        completed: { type: boolean, default: false }
+        id: { type: string, format: uuid }
+        name: { type: string, minLength: 1, maxLength: 200 }
         createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
 
-    NewTodo:
+    NewProject:
       type: object
-      required: [title]
+      required: [name]
       properties:
-        title:     { type: string, minLength: 1 }
+        name: { type: string, minLength: 1, maxLength: 200 }
 
-    UpdateTodo:
+    UpdateProject:
       type: object
       properties:
-        title:     { type: string, minLength: 1 }
-        completed: { type: boolean }
+        name: { type: string, minLength: 1, maxLength: 200 }
+
+    TaskStatus:
+      type: string
+      enum: [TODO, IN_PROGRESS, DONE]
+
+    BadRequest:
+      description: Bad Request (malformed JSON or type mismatch)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Conflict (e.g., unique constraint)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unprocessable:
+      description: Validation failed (well-formed request, semantic rules fail)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    DefaultError:
+      description: Unexpected error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }

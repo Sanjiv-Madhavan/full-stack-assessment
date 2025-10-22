@@ -1,0 +1,493 @@
+openapi: 3.0.4
+info:
+  title: Todo Application API
+  version: 1.1.0
+  description: Basic todo application
+
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: health
+    description: Liveness and readiness checks
+  - name: projects
+    description: Project CRUD
+  - name: tasks
+    description: Task CRUD within a project
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Health check.
+      description: Returns the service health.
+      operationId: getHealth
+      responses:
+        '200':
+          description: Successful health response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /projects:
+    get:
+      tags: [projects]
+      summary: List projects.
+      description: Returns all projects.
+      operationId: listProjects
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Project' }
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    post:
+      tags: [projects]
+      summary: Create a new project.
+      description: Create a new project with a unique name.
+      operationId: createProject
+      requestBody:
+        description: New project payload
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NewProject' }
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+        '400':
+          description: Bad request (malformed JSON or type mismatch)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: Project name already exists
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Validation failed (e.g., name too short/long)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /projects/{projectId}:
+    parameters:
+      - name: projectId
+        in: path
+        description: Project ID
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [projects]
+      summary: Get a project by ID.
+      description: Return a single project.
+      operationId: getProject
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    put:
+      tags: [projects]
+      summary: Update a project name.
+      description: Update a project's name.
+      operationId: updateProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProject' }
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: Project name already exists
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [projects]
+      summary: Delete a project.
+      description: Deletes a project and all its tasks.
+      operationId: deleteProject
+      responses:
+        '204':
+          description: Project deleted
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /projects/{projectId}/tasks:
+    parameters:
+      - name: projectId
+        in: path
+        description: Project ID
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [tasks]
+      summary: List tasks in a project.
+      description: Filter by status and/or title query; results sorted by updatedAt desc.
+      operationId: listTasks
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Filter by task status
+          schema:
+            $ref: '#/components/schemas/TaskStatus'
+        - name: q
+          in: query
+          required: false
+          description: Case-insensitive title contains
+          schema:
+            type: string
+            minLength: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Task' }
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    post:
+      tags: [tasks]
+      summary: Create a task in a project.
+      description: Create a new task; status defaults to TODO if omitted.
+      operationId: createTask
+      requestBody:
+        description: New task payload
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NewTask' }
+      responses:
+        '201':
+          description: Task created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '400':
+          description: Bad request (malformed JSON or type mismatch)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Validation failed (e.g., empty title, invalid status)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /projects/{projectId}/tasks/{taskId}:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        description: Project ID
+        schema:
+          type: string
+          format: uuid
+      - name: taskId
+        in: path
+        required: true
+        description: Task ID
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [tasks]
+      summary: Get a task by ID.
+      description: Return a single task.
+      operationId: getTask
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '404':
+          description: Task or project not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    put:
+      tags: [tasks]
+      summary: Update a task (partial).
+      description: Update one or more fields of a task.
+      operationId: updateTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTask' }
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '404':
+          description: Task or project not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Validation failed (e.g., invalid status value)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [tasks]
+      summary: Delete a task.
+      description: Delete a task by ID.
+      operationId: deleteTask
+      responses:
+        '204':
+          description: Task deleted
+        '404':
+          description: Task or project not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+components:
+  schemas:
+    Health:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, unhealthy]
+      required: [status]
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Stable application error code (e.g., VALIDATION_FAILED)
+          example: VALIDATION_FAILED
+        message:
+          type: string
+          description: Human-readable message
+          example: title is required
+        details:
+          type: array
+          description: Optional per-field messages
+          items:
+            type: string
+        traceId:
+          type: string
+          format: uuid
+          description: Correlates server logs
+      required: [code, message]
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 1b4f6a7e-8f0b-4f7c-9f10-2e6a3e3c5c9a
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: Demo Project
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, name, createdAt, updatedAt]
+
+    NewProject:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+      required: [name]
+
+    UpdateProject:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+
+    TaskStatus:
+      type: string
+      description: Workflow status of a task
+      enum: [TODO, IN_PROGRESS, DONE]
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+          maxLength: 8000
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, projectId, title, status, createdAt, updatedAt]
+
+    NewTask:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+          maxLength: 8000
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+      required: [title]
+
+    UpdateTask:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+          maxLength: 8000
+        status:
+          $ref: '#/components/schemas/TaskStatus'
