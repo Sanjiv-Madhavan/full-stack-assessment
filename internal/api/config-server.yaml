@@ -1,0 +1,13 @@
+# OpenAPI Codegen Configuration for Server
+generate:
+  std-http-server: true
+  embedded-spec: true
+  models: false
+  strict-server: true
+output-options:
+  skip-prune: true
+import-mapping:
+  ./<path>/<scheme>.yaml: '-'
+additional-imports:
+  - alias: .
+    package: 'full-stack-assesment/internal/scheme'

@@ -1,0 +1,8 @@
+# OpenAPI Codegen Configuration for Models
+generate:
+  models: true
+  embedded-spec: false
+output-options:
+  skip-prune: true
+import-mapping:
+  ./path/file.yaml: '-'
