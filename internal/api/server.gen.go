@@ -15,9 +15,11 @@ import (
 	"path"
 	"strings"
 
-	_ "full-stack-assesment/internal/scheme"
+	. "full-stack-assesment/internal/scheme"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // ServerInterface represents all server handlers.
@@ -31,6 +33,21 @@ type ServerInterface interface {
 	// Create a new project.
 	// (POST /projects)
 	CreateProject(w http.ResponseWriter, r *http.Request)
+	// List tasks in a project.
+	// (GET /projects/{projectId}/tasks)
+	ListTasks(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, params ListTasksParams)
+	// Create a task in a project.
+	// (POST /projects/{projectId}/tasks)
+	CreateTask(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID)
+	// Delete a task.
+	// (DELETE /projects/{projectId}/tasks/{taskId})
+	DeleteTask(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, taskId openapi_types.UUID)
+	// Get a task by ID.
+	// (GET /projects/{projectId}/tasks/{taskId})
+	GetTask(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, taskId openapi_types.UUID)
+	// Update a task (partial).
+	// (PUT /projects/{projectId}/tasks/{taskId})
+	UpdateTask(w http.ResponseWriter, r *http.Request, projectId openapi_types.UUID, taskId openapi_types.UUID)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -75,6 +92,193 @@ func (siw *ServerInterfaceWrapper) CreateProject(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateProject(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListTasks operation middleware
+func (siw *ServerInterfaceWrapper) ListTasks(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListTasksParams
+
+	// ------------- Optional query parameter "status" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "status", r.URL.Query(), &params.Status)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "q", r.URL.Query(), &params.Q)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", r.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "offset", r.URL.Query(), &params.Offset)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListTasks(w, r, projectId, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateTask operation middleware
+func (siw *ServerInterfaceWrapper) CreateTask(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateTask(w, r, projectId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteTask operation middleware
+func (siw *ServerInterfaceWrapper) DeleteTask(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "taskId" -------------
+	var taskId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "taskId", r.PathValue("taskId"), &taskId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "taskId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteTask(w, r, projectId, taskId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetTask operation middleware
+func (siw *ServerInterfaceWrapper) GetTask(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "taskId" -------------
+	var taskId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "taskId", r.PathValue("taskId"), &taskId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "taskId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetTask(w, r, projectId, taskId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateTask operation middleware
+func (siw *ServerInterfaceWrapper) UpdateTask(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "projectId" -------------
+	var projectId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "projectId", r.PathValue("projectId"), &projectId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "projectId", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "taskId" -------------
+	var taskId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "taskId", r.PathValue("taskId"), &taskId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "taskId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateTask(w, r, projectId, taskId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -207,6 +411,11 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc("GET "+options.BaseURL+"/health", wrapper.GetHealth)
 	m.HandleFunc("GET "+options.BaseURL+"/projects", wrapper.ListProjects)
 	m.HandleFunc("POST "+options.BaseURL+"/projects", wrapper.CreateProject)
+	m.HandleFunc("GET "+options.BaseURL+"/projects/{projectId}/tasks", wrapper.ListTasks)
+	m.HandleFunc("POST "+options.BaseURL+"/projects/{projectId}/tasks", wrapper.CreateTask)
+	m.HandleFunc("DELETE "+options.BaseURL+"/projects/{projectId}/tasks/{taskId}", wrapper.DeleteTask)
+	m.HandleFunc("GET "+options.BaseURL+"/projects/{projectId}/tasks/{taskId}", wrapper.GetTask)
+	m.HandleFunc("PUT "+options.BaseURL+"/projects/{projectId}/tasks/{taskId}", wrapper.UpdateTask)
 
 	return m
 }
@@ -214,21 +423,30 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

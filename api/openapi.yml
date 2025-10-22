@@ -74,7 +74,192 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
-  
+
+  /projects/{projectId}/tasks:
+    parameters:
+      - name: projectId
+        in: path
+        description: Project ID
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [tasks]
+      summary: List tasks in a project.
+      description: Filter by status and/or title query; results sorted by updatedAt desc.
+      operationId: listTasks
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Filter by task status
+          schema:
+            $ref: '#/components/schemas/TaskStatus'
+        - name: q
+          in: query
+          required: false
+          description: Case-insensitive title contains
+          schema:
+            type: string
+            minLength: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Task' }
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    post:
+      tags: [tasks]
+      summary: Create a task in a project.
+      description: Create a new task; status defaults to TODO if omitted.
+      operationId: createTask
+      requestBody:
+        description: New task payload
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NewTask' }
+      responses:
+        '201':
+          description: Task created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '400':
+          description: Bad request (malformed JSON or type mismatch)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Validation failed (e.g., empty title, invalid status)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /projects/{projectId}/tasks/{taskId}:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        description: Project ID
+        schema:
+          type: string
+          format: uuid
+      - name: taskId
+        in: path
+        required: true
+        description: Task ID
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [tasks]
+      summary: Get a task by ID.
+      description: Return a single task.
+      operationId: getTask
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '404':
+          description: Task or project not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    put:
+      tags: [tasks]
+      summary: Update a task (partial).
+      description: Update one or more fields of a task.
+      operationId: updateTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTask' }
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '404':
+          description: Task or project not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Validation failed (e.g., invalid status value)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [tasks]
+      summary: Delete a task.
+      description: Delete a task by ID.
+      operationId: deleteTask
+      responses:
+        '204':
+          description: Task deleted
+        '404':
+          description: Task or project not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 components:
   schemas:
     Health:
@@ -115,10 +300,6 @@ components:
       properties:
         name: { type: string, minLength: 1, maxLength: 200 }
 
-    TaskStatus:
-      type: string
-      enum: [TODO, IN_PROGRESS, DONE]
-
     BadRequest:
       description: Bad Request (malformed JSON or type mismatch)
       content:
@@ -144,3 +325,61 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
+    
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+          maxLength: 8000
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, projectId, title, status, createdAt, updatedAt]
+    TaskStatus:
+      type: string
+      enum: [TODO, IN_PROGRESS, DONE]
+    NewTask:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+          maxLength: 8000
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+      required: [title]
+
+    UpdateTask:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          nullable: true
+          maxLength: 8000
+        status:
+          $ref: '#/components/schemas/TaskStatus'

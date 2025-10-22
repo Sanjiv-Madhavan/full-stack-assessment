@@ -47,6 +47,13 @@ type NewProject struct {
 	Name string `json:"name"`
 }
 
+// NewTask defines model for NewTask.
+type NewTask struct {
+	Description *string     `json:"description"`
+	Status      *TaskStatus `json:"status,omitempty"`
+	Title       string      `json:"title"`
+}
+
 // NotFound Resource not found
 type NotFound = interface{}
 
@@ -61,6 +68,17 @@ type Project struct {
 // Status defines model for Status.
 type Status string
 
+// Task defines model for Task.
+type Task struct {
+	CreatedAt   time.Time          `json:"createdAt"`
+	Description *string            `json:"description"`
+	Id          openapi_types.UUID `json:"id"`
+	ProjectId   openapi_types.UUID `json:"projectId"`
+	Status      TaskStatus         `json:"status"`
+	Title       string             `json:"title"`
+	UpdatedAt   time.Time          `json:"updatedAt"`
+}
+
 // TaskStatus defines model for TaskStatus.
 type TaskStatus string
 
@@ -72,5 +90,29 @@ type UpdateProject struct {
 	Name *string `json:"name,omitempty"`
 }
 
+// UpdateTask defines model for UpdateTask.
+type UpdateTask struct {
+	Description *string     `json:"description"`
+	Status      *TaskStatus `json:"status,omitempty"`
+	Title       *string     `json:"title,omitempty"`
+}
+
+// ListTasksParams defines parameters for ListTasks.
+type ListTasksParams struct {
+	// Status Filter by task status
+	Status *TaskStatus `form:"status,omitempty" json:"status,omitempty"`
+
+	// Q Case-insensitive title contains
+	Q      *string `form:"q,omitempty" json:"q,omitempty"`
+	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
+	Offset *int    `form:"offset,omitempty" json:"offset,omitempty"`
+}
+
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody = NewProject
+
+// CreateTaskJSONRequestBody defines body for CreateTask for application/json ContentType.
+type CreateTaskJSONRequestBody = NewTask
+
+// UpdateTaskJSONRequestBody defines body for UpdateTask for application/json ContentType.
+type UpdateTaskJSONRequestBody = UpdateTask
