@@ -1,20 +1,20 @@
 import { Box, Flex, Text, ThemeIcon, Image, Loader } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
-import { getHealth } from '../api/generated';
+// import { getHealth } from '../api/generated';
 import { IconCheck, IconX } from '@tabler/icons-react';
 import favicon from '../assets/favicon.svg';
 
 export function Header() {
-  const { data: healthData, isLoading } = useQuery({
+  const getHealth = async () => {
+      const response = await fetch("localhost:8080/health");
+      return response.json();
+    }
+  const { data } = useQuery({
     queryKey: ['health'],
-    queryFn: async () => {
-      const response = await getHealth({});
-      return response.data;
-    },
-    refetchInterval: 5000,
+    queryFn: getHealth
   });
 
-  const isHealthy = healthData?.status === 'ok';
+  const isHealthy = data?.status === 'ok';
 
   return (
     <Box
@@ -37,9 +37,7 @@ export function Header() {
             />
         </Flex>
 
-        {isLoading ? (
-          <Loader size="sm" />
-        ) : (
+
             <Box
             style={{
               border: `1px solid ${isHealthy ? '#51cf66' : '#ff6b6b'}`,
@@ -62,7 +60,7 @@ export function Header() {
               </Text>
             </Flex>
           </Box>
-        )}
+
       </Flex>
     </Box>
   );
