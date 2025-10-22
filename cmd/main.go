@@ -4,6 +4,9 @@ import (
 	"context"
 	"full-stack-assesment/internal/api"
 	"full-stack-assesment/internal/middleware"
+	"full-stack-assesment/internal/migrate"
+	"full-stack-assesment/internal/store"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -23,10 +26,20 @@ func main() {
 	if err := run(ctx); err != nil {
 		panic(err)
 	}
+
 }
 
 func run(ctx context.Context) error {
-	server := api.NewServer()
+	db, err := store.InMemory(ctx)
+	if err != nil {
+		log.Fatalf("db init: %v", err)
+	}
+
+	if err := migrate.Apply(ctx, db); err != nil {
+		log.Fatalf("migrations: %v", err)
+	}
+
+	server := api.NewServer(db)
 	strictHandler := api.NewStrictHandler(server, nil)
 	router := http.NewServeMux()
 	h := api.HandlerFromMux(strictHandler, router)

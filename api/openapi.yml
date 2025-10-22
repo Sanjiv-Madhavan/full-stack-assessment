@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Todo Application API
-  version: 1.0.0
+  version: 1.1.0
   description: Basic todo application
 
 paths:
@@ -9,48 +9,124 @@ paths:
     get:
       summary: Health Check
       operationId: getHealth
-      tags:
-        - Health
+      tags: [Health]
       responses:
         200:
           description: Service is healthy
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    $ref: '#/components/schemas/Status'
-                required:
-                  - status
-        
-        500:
-          description: Service is unhealthy
+                $ref: '#/components/schemas/Health'
+  /todos:
+    get:
+      summary: List todos
+      operationId: getTodos
+      tags: [Todos]
+      responses:
+        200:
+          description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                type: array
+                items: { $ref: '#/components/schemas/Todo' }
+    post:
+      summary: Create a todo
+      operationId: postTodos
+      tags: [Todos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NewTodo' }
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Todo' }
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /todos/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Update a todo
+      operationId: putTodosId
+      tags: [Todos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTodo' }
+      responses:
+        200:
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Todo' }
+        404:
+          description: Not Found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      summary: Delete a todo
+      operationId: deleteTodosId
+      tags: [Todos]
+      responses:
+        204:
+          description: No Content
+        404:
+          description: Not Found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 
 components:
   schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+
     Status:
       type: string
-      enum:
-        - ok
-        - unhealthy
-      description: The health status of the service
-      example: ok
+      enum: [ok, unhealthy]
+
     Error:
       type: object
-      required:
-        - code
-        - message
+      required: [code, message]
       properties:
-        code:
-          type: integer
-          description: A unique error code for programmatic handling
-          example: 500
-        message:
-          type: string
-          description: A human-readable error message
-          example: "An unexpected error occurred on the server."
+        code:    { type: integer, example: 404 }
+        message: { type: string, example: "todo not found" }
+
+    Todo:
+      type: object
+      required: [id, title, completed, createdAt]
+      properties:
+        id:        { type: string, format: uuid }
+        title:     { type: string, minLength: 1 }
+        completed: { type: boolean, default: false }
+        createdAt: { type: string, format: date-time }
+
+    NewTodo:
+      type: object
+      required: [title]
+      properties:
+        title:     { type: string, minLength: 1 }
+
+    UpdateTodo:
+      type: object
+      properties:
+        title:     { type: string, minLength: 1 }
+        completed: { type: boolean }
