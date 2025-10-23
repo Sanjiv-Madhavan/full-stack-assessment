@@ -3,7 +3,7 @@ generate:
   std-http-server: true
   embedded-spec: true
   models: false
-  strict-server: true
+  strict-server: false
 output-options:
   skip-prune: true
 import-mapping:

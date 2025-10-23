@@ -40,9 +40,9 @@ func run(ctx context.Context) error {
 	}
 
 	server := api.NewServer(db)
-	strictHandler := api.NewStrictHandler(server, nil)
+	// strictHandler := api.NewStrictHandler(server, nil)
 	router := http.NewServeMux()
-	h := api.HandlerFromMux(strictHandler, router)
+	h := api.HandlerFromMux(server, router)
 
 	corsHandler := middleware.CORSMiddleware(h)
 	loggingHandler := middleware.LoggingMiddleware(corsHandler)
