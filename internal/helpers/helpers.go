@@ -95,13 +95,3 @@ func NormalizeStatus(s string) (string, bool) {
 		return "", false
 	}
 }
-
-type NotFoundErr struct{ msg string }
-
-func (e *NotFoundErr) Error() string { return e.msg }
-
-func NewNotFoundError(msg string) NotFoundErr {
-	return NotFoundErr{
-		msg: msg,
-	}
-}

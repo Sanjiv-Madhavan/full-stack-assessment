@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	_ "modernc.org/sqlite" // registers "sqlite" driver
+	_ "modernc.org/sqlite"
 )
 
 const schema = `
@@ -21,18 +21,13 @@ CREATE TABLE IF NOT EXISTS todos (
 CREATE INDEX IF NOT EXISTS idx_todos_completed_created ON todos(completed, created_at);
 `
 
-// InMemory opens a single-process in-memory SQLite with shared cache.
-// NOTE: state is per-process and disappears on restart; perfect for this assessment.
-// Use file-based (e.g., "file:todo.db?_fk=1") later for persistence.
 func InMemory(ctx context.Context) (*sql.DB, error) {
-	// shared in-memory DB (lives as long as THIS *process* has at least one open conn)
-	// docs: https://www.sqlite.org/inmemorydb.html
-	dsn := "file:todo?mode=memory&cache=shared&_fk=1" // enable FKs
+	dsn := "file:todo?mode=memory&cache=shared&_fk=1"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, err
 	}
-	// limit to a single connection so ":memory: shared" definitely sees the same db
+
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 
