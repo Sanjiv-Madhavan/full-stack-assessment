@@ -5,6 +5,11 @@ import (
 	"full-stack-assesment/internal/api"
 	"full-stack-assesment/internal/middleware"
 	"full-stack-assesment/internal/migrate"
+	projectsRepo "full-stack-assesment/internal/repo/projects"
+	tasksRepo "full-stack-assesment/internal/repo/task"
+	projectsService "full-stack-assesment/internal/service/projects"
+	taskService "full-stack-assesment/internal/service/task"
+
 	"full-stack-assesment/internal/store"
 	"log"
 	"log/slog"
@@ -39,16 +44,24 @@ func run(ctx context.Context) error {
 		log.Fatalf("migrations: %v", err)
 	}
 
-	server := api.NewServer(db)
-	// strictHandler := api.NewStrictHandler(server, nil)
+	projectsRepo := projectsRepo.NewSQLiteProjectsRepo(db)
+	taskRepo := tasksRepo.NewSQLiteTaskRepo(db)
+
+	projectsService := projectsService.NewService(*projectsRepo)
+	tasksService := taskService.NewService(*taskRepo, *projectsService)
+
+	server := api.NewServer(*projectsService, *tasksService)
 	router := http.NewServeMux()
 	h := api.HandlerFromMux(server, router)
 
-	corsHandler := middleware.CORSMiddleware(h)
-	loggingHandler := middleware.LoggingMiddleware(corsHandler)
+	handler := middleware.RecoverMiddleware(
+		middleware.LoggingMiddleware(
+			middleware.CORSMiddleware(h),
+		),
+	)
 
 	s := &http.Server{
-		Handler: loggingHandler,
+		Handler: handler,
 		Addr:    address,
 	}
 

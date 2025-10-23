@@ -1,0 +1,15 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch main.go",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/main.go",
+            "env": {
+                "OAUTH_SECRET_NAME": "eventing-oauth-broker-cred-gen-x509",
+            }
+        }
+    ]
+}
